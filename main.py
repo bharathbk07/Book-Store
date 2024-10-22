@@ -36,6 +36,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"message": exc.detail},
     )
 
+# uvicorn main:app --reload
 # Define any additional routes if needed
 
 # If you're using a database connection, make sure to include that setup here too.

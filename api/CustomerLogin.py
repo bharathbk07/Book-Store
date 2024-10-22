@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from Database import db_connect
 
 class User(BaseModel):
     username: str
@@ -19,5 +20,12 @@ def read_user(user_id: int):  # Corrected type
 
 @router.post("/login")  # Changed to POST for login
 def user_login(user: User):  # Corrected to accept User model
+    
     # Logic to verify user
-    return {"username": user.username, "message": "Logged in successfully."}
+    login_verify_query = "SELECT username, password FROM users WHERE username = %s;"
+    login_query_result = db_connect.execute_query(login_verify_query, (user.username,))
+
+    if login_query_result[0][1] == user.password:
+        return {"username": user.username, "message": "Logged in successfully."}
+    else:
+        return {"username": user.username, "message": "Invalid Username or Password."}
