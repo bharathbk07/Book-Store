@@ -4,7 +4,6 @@ from fastapi.responses import JSONResponse
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security import OAuth2
 
-#from app.CustomerLogin import router as user_router
 from app.auth.auth_routes import router as auth_router
 from app.users.user_routes import router as user_router
 
@@ -26,7 +25,6 @@ app.add_middleware(
 )
 
 # Include routers
-#app.include_router(user_router, prefix="/api", tags=["User Action"])
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/users", tags=["User Management"])
 
