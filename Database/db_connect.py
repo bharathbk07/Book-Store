@@ -31,7 +31,7 @@ def execute_query(query, params=None):
 
         # Commit changes if it's an INSERT/UPDATE/DELETE query
         if result is not None:
-            print("Query executed successfully")
+            #print("Query executed successfully")
             return result
         else:
             connection.commit()  # Commit if there is no result to fetch (e.g., INSERT/UPDATE/DELETE)
@@ -45,12 +45,12 @@ def execute_query(query, params=None):
         if connection:
             connection.close()
 
-# Example of how to use the execute_query function
-"""user_input = "Admin"  # Replace with actual user input
-login_verify_query = "SELECT username, password FROM users WHERE username = %s;"
+'''# Example of how to use the execute_query function
+user_input = "Admin"  # Replace with actual user input
+login_verify_query = "SELECT id, username, password FROM users WHERE username = %s;"
 result = execute_query(login_verify_query, (user_input,))
 
 if result:
-    print("User found:", result)
+    print("User found:", result[0][0])
 else:
-    print("User not found.")"""
+    print("User not found.")'''

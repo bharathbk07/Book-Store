@@ -16,7 +16,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router, prefix="/api", tags=["login"])
+app.include_router(user_router, prefix="/api", tags=["User Action"])
 
 # Global Exception Handling
 @app.exception_handler(Exception)
