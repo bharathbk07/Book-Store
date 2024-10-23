@@ -12,7 +12,6 @@ class OAuth2BearerHeader(OAuth2):
         flows = OAuthFlowsModel(password={"tokenUrl": "login"})
         super().__init__(flows=flows)
 
-
 app = FastAPI()
 
 # Middleware: Allow Cross-Origin Resource Sharing (CORS)

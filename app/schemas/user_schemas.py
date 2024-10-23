@@ -9,3 +9,7 @@ class UserCreate(BaseModel):
     phone: str = Field(..., max_length=15)
     mailid: EmailStr
     usertype: str = Field(default="user")
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str

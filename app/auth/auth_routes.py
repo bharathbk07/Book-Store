@@ -4,6 +4,7 @@ from app.database import db_connect
 from app.utils.password_utils import pwd_context
 from fastapi.security import OAuth2PasswordBearer
 from mysql.connector import Error
+from app.schemas.user_schemas import LoginRequest
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 blacklist = set()  # In-memory token blacklist
@@ -11,11 +12,11 @@ blacklist = set()  # In-memory token blacklist
 router = APIRouter()
 
 @router.post("/login")
-def login(username: str, password: str):
+def login(user: LoginRequest):
     query = "SELECT id, password FROM users WHERE username = %s"
-    result = db_connect.execute_query(query, (username,))
+    result = db_connect.execute_query(query, (user.username,))
     
-    if not result or not pwd_context.verify(password, result[0][1]):
+    if not result or not pwd_context.verify(user.password, result[0][1]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     user_id = result[0][0]
