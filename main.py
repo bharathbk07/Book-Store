@@ -1,8 +1,18 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi.security import OAuth2
 
-from api.CustomerLogin import router as user_router
+#from app.CustomerLogin import router as user_router
+from app.auth.auth_routes import router as auth_router
+from app.users.user_routes import router as user_router
+
+class OAuth2BearerHeader(OAuth2):
+    def __init__(self):
+        flows = OAuthFlowsModel(password={"tokenUrl": "login"})
+        super().__init__(flows=flows)
+
 
 app = FastAPI()
 
@@ -16,7 +26,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router, prefix="/api", tags=["User Action"])
+#app.include_router(user_router, prefix="/api", tags=["User Action"])
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(user_router, prefix="/users", tags=["User Management"])
+
 
 # Global Exception Handling
 @app.exception_handler(Exception)
@@ -39,4 +52,3 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # uvicorn main:app --reload
 # Define any additional routes if needed
 
-# If you're using a database connection, make sure to include that setup here too.
