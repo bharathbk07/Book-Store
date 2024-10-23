@@ -44,13 +44,3 @@ def execute_query(query, params=None):
             cursor.close()
         if connection:
             connection.close()
-
-'''# Example of how to use the execute_query function
-user_input = "Admin"  # Replace with actual user input
-login_verify_query = "SELECT id, username, password FROM users WHERE username = %s;"
-result = execute_query(login_verify_query, (user_input,))
-
-if result:
-    print("User found:", result[0][0])
-else:
-    print("User not found.")'''
