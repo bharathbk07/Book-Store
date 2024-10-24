@@ -10,7 +10,13 @@ To create the database, run the following SQL command:
 
 ```sql
 CREATE DATABASE IF NOT EXISTS onlinebookstore;
+```
 
+# Creating Tables
+
+After creating the database, you can create the necessary tables by executing the following SQL commands:
+
+## Create Books Table
 ```sql
 CREATE TABLE IF NOT EXISTS books (
     barcode VARCHAR(100) PRIMARY KEY,
@@ -20,8 +26,9 @@ CREATE TABLE IF NOT EXISTS books (
     quantity INT,
     added_by VARCHAR(100)
 );
+```
 
-
+## Create Users Table
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -34,3 +41,4 @@ CREATE TABLE IF NOT EXISTS users (
     mailid VARCHAR(100) UNIQUE,
     usertype VARCHAR(50)
 );
+```
