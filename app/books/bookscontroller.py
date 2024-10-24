@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.database import db_connect
 from app.auth.auth_routes import get_current_user
 from app.schemas.user_schemas import Book
+from app.schemas.user_schemas import BookUpdateRequest
 from mysql.connector import Error
 from datetime import datetime
 import uuid  # For generating unique order IDs
@@ -130,3 +131,86 @@ def order_book(order_details: Dict[str, int], current_user: dict = Depends(get_c
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+@router.put("/modify_or_delete_book")
+def modify_or_delete_book(
+    book_update: BookUpdateRequest, 
+    delete: bool = False,  # Query parameter to trigger deletion
+    user: dict = Depends(get_current_user)
+):
+    """
+    Modify or delete a book. 
+    Users can modify/delete only books they added, but admins have full access.
+    """
+
+    # Step 1: Check if the book exists and if the user has permissions
+    verify_query = """
+        SELECT barcode, added_by FROM books WHERE barcode = %s
+    """
+    book = db_connect.execute_query(verify_query, (book_update.barcode,))
+
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found."
+        )
+
+    book_data = book[0]
+    added_by = book_data[1]
+
+    # Check if the user is either the creator or an admin
+    if user["username"] != added_by and user["usertype"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to modify or delete this book."
+        )
+
+    # Step 2: Handle deletion request
+    if delete:
+        try:
+            delete_query = "DELETE FROM books WHERE barcode = %s"
+            db_connect.execute_query(delete_query, (book_update.barcode,))
+            return {"message": f"Book with barcode {book_update.barcode} deleted successfully."}
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Database error while deleting the book: {str(e)}"
+            )
+
+    # Step 3: Handle update request if not deleting
+    update_fields = []
+    update_params = []
+
+    if book_update.quantity is not None:
+        update_fields.append("quantity = %s")
+        update_params.append(book_update.quantity)
+
+    if book_update.price is not None:
+        update_fields.append("price = %s")
+        update_params.append(book_update.price)
+
+    if book_update.name is not None:
+        update_fields.append("name = %s")
+        update_params.append(book_update.name)
+
+    # Ensure there's at least one field to update
+    if not update_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid fields to update."
+        )
+
+    # Step 4: Execute the update query
+    update_query = f"""
+        UPDATE books SET {", ".join(update_fields)} WHERE barcode = %s
+    """
+    update_params.append(book_update.barcode)
+
+    try:
+        db_connect.execute_query(update_query, tuple(update_params))
+        return {"message": f"Book with barcode {book_update.barcode} updated successfully."}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )

@@ -20,3 +20,9 @@ class Book(BaseModel):
     author: str
     price: float
     quantity: int
+
+class BookUpdateRequest(BaseModel):
+    barcode: str
+    quantity: int = Field(None, ge=0)  # Optional, but must be >= 0
+    price: float = Field(None, gt=0)   # Optional, must be > 0
+    name: str = None  
