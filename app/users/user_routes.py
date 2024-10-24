@@ -26,11 +26,87 @@ def register(user: UserCreate):
 @router.get("/profile")
 def get_profile(user: dict = Depends(get_current_user)):
     """
-    Get the user's profile information.
+    Get the user's profile information, order history, and books they have added.
+    If the user is an admin, return all transactions.
     Requires a valid JWT token in the Authorization header.
     """
-    print(user, user["username"])
-    return {"username": user["username"], "message": "Welcome to your profile!"}
+
+    try:
+        # Determine if the user is an admin
+        if user["usertype"] == "admin":
+            # Admin: Fetch all transactions
+            orders_query = """
+                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
+                       o.status, o.quantity, b.name AS book_name, u.username 
+                FROM orders o
+                JOIN books b ON o.barcode = b.barcode
+                JOIN users u ON o.user_id = u.id
+            """
+            orders_params = ()
+        else:
+            # Regular user: Fetch only their own orders
+            orders_query = """
+                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
+                       o.status, o.quantity, b.name AS book_name 
+                FROM orders o
+                JOIN books b ON o.barcode = b.barcode
+                WHERE o.user_id = %s
+            """
+            orders_params = (user["id"],)
+
+        # Execute the orders query
+        orders = db_connect.execute_query(orders_query, orders_params)
+
+        # Fetch books added by the current user
+        books_query = """
+            SELECT barcode, name, author, price, quantity 
+            FROM books 
+            WHERE added_by = %s
+        """
+        books_params = (user["username"],)
+        added_books = db_connect.execute_query(books_query, books_params)
+
+        # Format orders data
+        orders_data = [
+            {
+                "order_id": row[0],
+                "order_date": row[1].strftime("%Y-%m-%d %H:%M:%S"),
+                "transaction_id": row[2],
+                "total_amount": float(row[3]),
+                "status": row[4],
+                "quantity": row[5],
+                "book_name": row[6],
+                **({"ordered_by": row[7]} if user["usertype"] == "admin" else {}),
+            }
+            for row in orders
+        ]
+
+        # Format added books data
+        books_data = [
+            {
+                "barcode": row[0],
+                "name": row[1],
+                "author": row[2],
+                "price": float(row[3]),
+                "quantity": row[4],
+            }
+            for row in added_books
+        ]
+
+        # Handle case when no data is found
+        orders_data = orders_data or "No orders found."
+        books_data = books_data or "No books added."
+
+        # Construct the response
+        return {
+            "username": user["username"],
+            "message": "Welcome to your profile!",
+            "orders": orders_data,
+            "added_books": books_data,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/user_details")
 def user_details(user: dict = Depends(get_current_user)):

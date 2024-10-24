@@ -6,7 +6,7 @@ from fastapi.security import OAuth2
 
 from app.auth.auth_routes import router as auth_router
 from app.users.user_routes import router as user_router
-from app.books.view_books import router as books_router
+from app.books.bookscontroller import router as books_router
 
 class OAuth2BearerHeader(OAuth2):
     def __init__(self):

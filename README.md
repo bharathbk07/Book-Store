@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS orders (
     transaction_id VARCHAR(100) UNIQUE,
     total_amount DECIMAL(10, 2),
     status VARCHAR(50),
+    quantity INT DEFAULT 1,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (barcode) REFERENCES books(barcode)
 );
