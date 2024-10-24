@@ -42,3 +42,19 @@ CREATE TABLE IF NOT EXISTS users (
     usertype VARCHAR(50)
 );
 ```
+
+## Create Orders table
+
+```sql
+CREATE TABLE IF NOT EXISTS orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    barcode VARCHAR(100),
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    transaction_id VARCHAR(100) UNIQUE,
+    total_amount DECIMAL(10, 2),
+    status VARCHAR(50),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (barcode) REFERENCES books(barcode)
+);
+```
