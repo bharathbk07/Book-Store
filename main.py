@@ -6,6 +6,7 @@ from fastapi.security import OAuth2
 
 from app.auth.auth_routes import router as auth_router
 from app.users.user_routes import router as user_router
+from app.books.view_books import router as books_router
 
 class OAuth2BearerHeader(OAuth2):
     def __init__(self):
@@ -26,7 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/users", tags=["User Management"])
-
+app.include_router(books_router, prefix="/books", tags=["Books Management"])
 
 # Global Exception Handling
 @app.exception_handler(Exception)

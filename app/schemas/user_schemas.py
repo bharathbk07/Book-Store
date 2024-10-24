@@ -13,3 +13,10 @@ class UserCreate(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+class Book(BaseModel):
+    barcode: str
+    name: str
+    author: str
+    price: float
+    quantity: int

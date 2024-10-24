@@ -23,15 +23,6 @@ def register(user: UserCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.get("/profile")
-def get_profile(user: dict = Depends(get_current_user)):
-    """
-    Get the user's profile information.
-    Requires a valid JWT token in the Authorization header.
-    """
-    print(user, user["username"])
-    return {"username": user["username"], "message": "Welcome to your profile!"}
-
 @router.get("/user_details")
 def user_details(user: dict = Depends(get_current_user)):
     try:
