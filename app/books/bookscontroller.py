@@ -13,7 +13,6 @@ router = APIRouter()
 def raise_db_error(e: Exception, message: str = "Database error"):
     raise HTTPException(status_code=500, detail=f"{message}: {str(e)}")
 
-
 @router.get("/view_books")
 def view_books():
     """
