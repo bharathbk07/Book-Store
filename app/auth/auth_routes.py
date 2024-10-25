@@ -4,7 +4,7 @@ from app.database import db_connect
 from app.utils.password_utils import pwd_context
 from fastapi.security import OAuth2PasswordBearer
 from mysql.connector import Error
-from app.schemas.user_schemas import LoginRequest
+from app.schemas.schemas import LoginRequest
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 blacklist = set()  # In-memory token blacklist

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.database import db_connect
 from app.auth.auth_routes import get_current_user
-from app.schemas.user_schemas import UserCreate, UserUpdateRequest
+from app.schemas.schemas import UserCreate, UserUpdateRequest
 from app.utils.password_utils import pwd_context
 from mysql.connector import Error
 

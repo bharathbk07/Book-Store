@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.database import db_connect
 from app.auth.auth_routes import get_current_user
-from app.schemas.user_schemas import Book, BookUpdateRequest
+from app.schemas.schemas import Book, BookUpdateRequest
 from mysql.connector import Error
 from datetime import datetime
 import uuid
