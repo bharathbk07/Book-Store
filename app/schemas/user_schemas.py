@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
 class UserCreate(BaseModel):
     username: str
@@ -26,3 +27,11 @@ class BookUpdateRequest(BaseModel):
     quantity: int = Field(None, ge=0)  # Optional, but must be >= 0
     price: float = Field(None, gt=0)   # Optional, must be > 0
     name: str = None  
+
+class UserUpdateRequest(BaseModel):
+    firstname: Optional[str] = None
+    lastname: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    mailid: Optional[EmailStr] = None
+    usertype: Optional[str] = None  # 'admin', 'seller', 'user'

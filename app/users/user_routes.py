@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.database import db_connect
 from app.auth.auth_routes import get_current_user
-from app.schemas.user_schemas import UserCreate
+from app.schemas.user_schemas import UserCreate, UserUpdateRequest
 from app.utils.password_utils import pwd_context
 from mysql.connector import Error
 
@@ -166,4 +166,103 @@ def user_details(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
         # Catch any other exceptions
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.put("/update_user")
+def update_user(
+    user_update: UserUpdateRequest,
+    username: str = Query(None, description="Username to update (only for admins)", example="john_doe"), 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update user details.
+    - Non-admins can update only their own details.
+    - Admins can update any user's details by specifying the username.
+    - Available roles: 'admin', 'seller', 'user'.
+    """
+
+    try:
+        # Step 1: Determine which user's details to update
+        if current_user["usertype"] == "admin":
+            # Admin can update any user's profile; username must be provided
+            if not username:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username is required for admin updates."
+                )
+        else:
+            # Non-admin user can only update their own profile
+            username = current_user["username"]
+
+        # Step 2: Check if the user exists
+        user_query = "SELECT id, usertype FROM users WHERE username = %s"
+        user_data = db_connect.execute_query(user_query, (username,))
+
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User '{username}' not found."
+            )
+
+        user_id, existing_role = user_data[0]
+
+        # Step 3: Build the update query dynamically based on provided fields
+        update_fields = []
+        update_params = []
+
+        if user_update.firstname:
+            update_fields.append("firstname = %s")
+            update_params.append(user_update.firstname)
+
+        if user_update.lastname:
+            update_fields.append("lastname = %s")
+            update_params.append(user_update.lastname)
+
+        if user_update.address:
+            update_fields.append("address = %s")
+            update_params.append(user_update.address)
+
+        if user_update.phone:
+            update_fields.append("phone = %s")
+            update_params.append(user_update.phone)
+
+        if user_update.mailid:
+            update_fields.append("mailid = %s")
+            update_params.append(user_update.mailid)
+
+        if user_update.usertype:
+            # Only admins can change the user type
+            if current_user["usertype"] != "admin":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only admins can change the user role."
+                )
+            if user_update.usertype not in ["admin", "seller", "user"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid role. Available roles: 'admin', 'seller', 'user'."
+                )
+            update_fields.append("usertype = %s")
+            update_params.append(user_update.usertype)
+
+        # Ensure at least one field is being updated
+        if not update_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid fields provided for update."
+            )
+
+        # Step 4: Execute the update query
+        update_query = f"UPDATE users SET {', '.join(update_fields)} WHERE username = %s"
+        update_params.append(username)
+
+        db_connect.execute_query(update_query, tuple(update_params))
+
+        return {"message": f"User '{username}' updated successfully."}
+
+    except HTTPException as http_err:
+        raise http_err  # Re-raise HTTP exceptions
+    except Error as db_err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
