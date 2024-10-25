@@ -56,61 +56,6 @@ def add_books(book_details: Book, current_user: dict = Depends(get_current_user)
     except Exception as e:
         raise_db_error(e)
 
-@router.post("/order_book")
-def order_book(order_details: Dict[str, int], current_user: dict = Depends(get_current_user)):
-    """
-    Place an order for a book. Provide 'barcode' and 'quantity' in the request.
-    """
-    barcode = order_details.get("barcode")
-    quantity = order_details.get("quantity")
-
-    if not barcode or not quantity:
-        raise HTTPException(status_code=400, detail="Barcode and quantity are required.")
-
-    try:
-        # Fetch book details
-        query_result = db_connect.execute_query(
-            "SELECT price, quantity FROM books WHERE barcode = %s", (barcode,)
-        )
-        book = query_result["data"]
-
-        if not book:
-            raise HTTPException(status_code=404, detail="Book not found.")
-
-        price, available_quantity = book[0]
-
-        if available_quantity < quantity:
-            raise HTTPException(status_code=400, detail="Insufficient stock.")
-
-        # Calculate total amount and generate transaction details
-        total_amount = price * quantity
-        transaction_id = str(uuid.uuid4())
-        order_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Insert the order
-        db_connect.execute_query("""
-            INSERT INTO orders (user_id, barcode, order_date, transaction_id, 
-                                total_amount, status, quantity) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (current_user['id'], barcode, order_date, transaction_id, total_amount, 
-              "Order Placed", quantity))
-
-        # Update book stock or delete if out of stock
-        new_quantity = available_quantity - quantity
-        if new_quantity > 0:
-            db_connect.execute_query(
-                "UPDATE books SET quantity = %s WHERE barcode = %s", (new_quantity, barcode)
-            )
-        else:
-            db_connect.execute_query(
-                "DELETE FROM books WHERE barcode = %s", (barcode,)
-            )
-
-        return {"message": "Order placed successfully", "transaction_id": transaction_id}
-
-    except Exception as e:
-        raise_db_error(e)
-
 @router.put("/modify_or_delete_book")
 def modify_or_delete_book(
     book_update: BookUpdateRequest, 
