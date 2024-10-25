@@ -19,7 +19,9 @@ def view_books():
     Retrieve all books from the database.
     """
     try:
-        books = db_connect.execute_query("SELECT * FROM books;")
+        query_result = db_connect.execute_query("SELECT * FROM books;")
+        books = query_result["data"]
+
         books_data = [
             {
                 "barcode": row[0],
@@ -35,7 +37,6 @@ def view_books():
 
     except Error as e:
         raise_db_error(e)
-
 
 @router.post("/add_books")
 def add_books(book_details: Book, current_user: dict = Depends(get_current_user)):
@@ -55,7 +56,6 @@ def add_books(book_details: Book, current_user: dict = Depends(get_current_user)
     except Exception as e:
         raise_db_error(e)
 
-
 @router.post("/order_book")
 def order_book(order_details: Dict[str, int], current_user: dict = Depends(get_current_user)):
     """
@@ -69,9 +69,11 @@ def order_book(order_details: Dict[str, int], current_user: dict = Depends(get_c
 
     try:
         # Fetch book details
-        book = db_connect.execute_query(
+        query_result = db_connect.execute_query(
             "SELECT price, quantity FROM books WHERE barcode = %s", (barcode,)
         )
+        book = query_result["data"]
+
         if not book:
             raise HTTPException(status_code=404, detail="Book not found.")
 
@@ -109,7 +111,6 @@ def order_book(order_details: Dict[str, int], current_user: dict = Depends(get_c
     except Exception as e:
         raise_db_error(e)
 
-
 @router.put("/modify_or_delete_book")
 def modify_or_delete_book(
     book_update: BookUpdateRequest, 
@@ -121,9 +122,11 @@ def modify_or_delete_book(
     """
     try:
         # Verify if the book exists and fetch the added_by field
-        book = db_connect.execute_query(
+        query_result = db_connect.execute_query(
             "SELECT barcode, added_by FROM books WHERE barcode = %s", (book_update.barcode,)
         )
+        book = query_result["data"]
+
         if not book:
             raise HTTPException(status_code=404, detail="Book not found.")
 

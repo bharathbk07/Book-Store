@@ -16,38 +16,46 @@ pool = mysql.connector.pooling.MySQLConnectionPool(
     database=os.getenv("DB_NAME")
 )
 
-def execute_query(query, params=None):
+def get_column_descriptions(cursor):
+    """Retrieve column descriptions from the executed query."""
+    if cursor.description:
+        return [desc[0] for desc in cursor.description]
+    return []
+
+def execute_query(query: str, params=None):
     """Execute a SQL query using a connection from the pool."""
     connection = None
     cursor = None
     try:
+        # Get a connection from the pool
         connection = pool.get_connection()
         cursor = connection.cursor()
 
         # Execute the query with parameters if provided
         cursor.execute(query, params)
-        
+
         # Check if the query modifies data (INSERT, UPDATE, DELETE)
         if query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
-            connection.commit()  # Commit the changes 
+            connection.commit()  # Commit the changes
 
-        # Fetch all results if needed
-        result = cursor.fetchall() if cursor.description else None
+         # Fetch results for SELECT queries
+        if cursor.description:  # Check if the cursor has results
+            result = cursor.fetchall()
+            column_names = get_column_descriptions(cursor)
+            return {
+                "data": result,
+                "columns": column_names
+            }
+            return result  # Return both result and column names
 
-        # Commit changes if it's an INSERT/UPDATE/DELETE query
-        '''if result is not None:
-            #print("Query executed successfully")
-            return result
-        else:
-            connection.commit()  # Commit if there is no result to fetch (e.g., INSERT/UPDATE/DELETE)'''
-        return result
+        return None  # Return None for non-SELECT queries
 
     except Error as e:
-        print(f"Error: '{e}' occurred")
-        raise
-       
+        print(f"Database error: '{e}' occurred")
+        raise  # Reraise the exception for higher-level handling
+
     finally:
         if cursor:
-            cursor.close()
+            cursor.close()  # Close the cursor
         if connection:
-            connection.close()
+            connection.close()  # Return connection to the pool

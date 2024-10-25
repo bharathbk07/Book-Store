@@ -25,16 +25,8 @@ def register(user: UserCreate):
 
 @router.get("/profile")
 def get_profile(user: dict = Depends(get_current_user)):
-    """
-    Get the user's profile information, order history, and books they have added.
-    If the user is an admin, return all transactions.
-    Requires a valid JWT token in the Authorization header.
-    """
-
     try:
-        # Determine if the user is an admin
         if user["usertype"] == "admin":
-            # Admin: Fetch all transactions
             orders_query = """
                 SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
                        o.status, o.quantity, b.name AS book_name, u.username 
@@ -44,7 +36,6 @@ def get_profile(user: dict = Depends(get_current_user)):
             """
             orders_params = ()
         else:
-            # Regular user: Fetch only their own orders
             orders_query = """
                 SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
                        o.status, o.quantity, b.name AS book_name 
@@ -54,19 +45,17 @@ def get_profile(user: dict = Depends(get_current_user)):
             """
             orders_params = (user["id"],)
 
-        # Execute the orders query
-        orders = db_connect.execute_query(orders_query, orders_params)
+        orders_result = db_connect.execute_query(orders_query, orders_params)
+        orders = orders_result["data"]
 
-        # Fetch books added by the current user
         books_query = """
             SELECT barcode, name, author, price, quantity 
             FROM books 
             WHERE added_by = %s
         """
-        books_params = (user["username"],)
-        added_books = db_connect.execute_query(books_query, books_params)
+        books_result = db_connect.execute_query(books_query, (user["username"],))
+        added_books = books_result["data"]
 
-        # Format orders data
         orders_data = [
             {
                 "order_id": row[0],
@@ -81,7 +70,6 @@ def get_profile(user: dict = Depends(get_current_user)):
             for row in orders
         ]
 
-        # Format added books data
         books_data = [
             {
                 "barcode": row[0],
@@ -93,16 +81,11 @@ def get_profile(user: dict = Depends(get_current_user)):
             for row in added_books
         ]
 
-        # Handle case when no data is found
-        orders_data = orders_data or "No orders found."
-        books_data = books_data or "No books added."
-
-        # Construct the response
         return {
             "username": user["username"],
             "message": "Welcome to your profile!",
-            "orders": orders_data,
-            "added_books": books_data,
+            "orders": orders_data or "No orders found.",
+            "added_books": books_data or "No books added.",
         }
 
     except Exception as e:
@@ -112,13 +95,10 @@ def get_profile(user: dict = Depends(get_current_user)):
 def user_details(user: dict = Depends(get_current_user)):
     try:
         if user["usertype"] == 'admin':
-            user_data_query = """
-            SELECT username, firstname, lastname, address, phone, mailid, usertype FROM users;
-            """
-            # Execute the query using your database function
-            users = db_connect.execute_query(user_data_query)
+            user_data_query = "SELECT username, firstname, lastname, address, phone, mailid, usertype FROM users;"
+            users_result = db_connect.execute_query(user_data_query)
+            users = users_result["data"]
 
-            # Format the result as a list of dictionaries
             user_data = [
                 {
                     "username": row[0],
@@ -131,41 +111,33 @@ def user_details(user: dict = Depends(get_current_user)):
                 }
                 for row in users
             ]
-
-            # Return all users' details in JSON format
             return {"message": "User details retrieved successfully", "user_data": user_data}
+
         else:
-            user_data_query = """
-            SELECT username, firstname, lastname, address, phone, mailid, usertype FROM users WHERE username = %s;
-            """
-            # Execute the query using your database function
-            user_data = db_connect.execute_query(user_data_query, (user['username'],))
-            
-            if not user_data:
+            user_data_query = "SELECT username, firstname, lastname, address, phone, mailid, usertype FROM users WHERE username = %s;"
+            user_result = db_connect.execute_query(user_data_query, (user['username'],))
+            user_info = user_result["data"][0] if user_result["data"] else None
+
+            if not user_info:
                 raise HTTPException(status_code=404, detail="User not found")
 
-            # Format the result for a specific user
-            user_info = {
-                "username": user_data[0][0],
-                "firstname": user_data[0][1],
-                "lastname": user_data[0][2],
-                "address": user_data[0][3],
-                "phone": user_data[0][4],
-                "mailid": user_data[0][5],
-                "usertype": user_data[0][6]
+            user_data = {
+                "username": user_info[0],
+                "firstname": user_info[1],
+                "lastname": user_info[2],
+                "address": user_info[3],
+                "phone": user_info[4],
+                "mailid": user_info[5],
+                "usertype": user_info[6]
             }
 
-            # Return specific user's details in JSON format
-            return {"message": "User details retrieved successfully", "user_data": user_info}
+            return {"message": "User details retrieved successfully", "user_data": user_data}
 
     except HTTPException as http_err:
-        # Reraise HTTP exceptions for specific status codes
         raise http_err
     except Error as e:
-        # General error handling
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
-        # Catch any other exceptions
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.put("/update_user")
@@ -174,29 +146,19 @@ def update_user(
     username: str = Query(None, description="Username to update (only for admins)", example="john_doe"), 
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Update user details.
-    - Non-admins can update only their own details.
-    - Admins can update any user's details by specifying the username.
-    - Available roles: 'admin', 'seller', 'user'.
-    """
-
     try:
-        # Step 1: Determine which user's details to update
         if current_user["usertype"] == "admin":
-            # Admin can update any user's profile; username must be provided
             if not username:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Username is required for admin updates."
                 )
         else:
-            # Non-admin user can only update their own profile
             username = current_user["username"]
 
-        # Step 2: Check if the user exists
         user_query = "SELECT id, usertype FROM users WHERE username = %s"
-        user_data = db_connect.execute_query(user_query, (username,))
+        user_result = db_connect.execute_query(user_query, (username,))
+        user_data = user_result["data"]
 
         if not user_data:
             raise HTTPException(
@@ -206,32 +168,25 @@ def update_user(
 
         user_id, existing_role = user_data[0]
 
-        # Step 3: Build the update query dynamically based on provided fields
         update_fields = []
         update_params = []
 
         if user_update.firstname:
             update_fields.append("firstname = %s")
             update_params.append(user_update.firstname)
-
         if user_update.lastname:
             update_fields.append("lastname = %s")
             update_params.append(user_update.lastname)
-
         if user_update.address:
             update_fields.append("address = %s")
             update_params.append(user_update.address)
-
         if user_update.phone:
             update_fields.append("phone = %s")
             update_params.append(user_update.phone)
-
         if user_update.mailid:
             update_fields.append("mailid = %s")
             update_params.append(user_update.mailid)
-
         if user_update.usertype:
-            # Only admins can change the user type
             if current_user["usertype"] != "admin":
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -245,14 +200,12 @@ def update_user(
             update_fields.append("usertype = %s")
             update_params.append(user_update.usertype)
 
-        # Ensure at least one field is being updated
         if not update_fields:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No valid fields provided for update."
             )
 
-        # Step 4: Execute the update query
         update_query = f"UPDATE users SET {', '.join(update_fields)} WHERE username = %s"
         update_params.append(username)
 
@@ -261,7 +214,7 @@ def update_user(
         return {"message": f"User '{username}' updated successfully."}
 
     except HTTPException as http_err:
-        raise http_err  # Re-raise HTTP exceptions
+        raise http_err
     except Error as db_err:
         raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
     except Exception as e:
