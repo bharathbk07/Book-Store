@@ -42,6 +42,22 @@ CREATE TABLE IF NOT EXISTS users (
     usertype VARCHAR(50)
 );
 ```
+<h2>Use Below api to create admin user</h2>
+
+```curl
+curl --location 'localhost:8000/users/register' \
+--header 'Content-Type: application/json' \
+--data '{
+  "username": "Admin",
+  "password": "Admin!",
+  "firstname": "Admin",
+  "lastname": "Admin",
+  "address": "Admin",
+  "phone": "Admin",
+  "mailid": "Admin",
+  "usertype": "admin"
+}
+```
 
 ## Create Orders table
 
@@ -54,6 +70,18 @@ CREATE TABLE IF NOT EXISTS orders (
     transaction_id VARCHAR(100) UNIQUE,
     total_amount DECIMAL(10, 2),
     status VARCHAR(50),
+    quantity INT DEFAULT 1,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (barcode) REFERENCES books(barcode)
+);
+```
+## Create Cart tabel
+
+```sql
+CREATE TABLE IF NOT EXISTS cart (
+    cart_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    barcode VARCHAR(100),
     quantity INT DEFAULT 1,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (barcode) REFERENCES books(barcode)
