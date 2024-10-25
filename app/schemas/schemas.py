@@ -35,3 +35,7 @@ class UserUpdateRequest(BaseModel):
     phone: Optional[str] = None
     mailid: Optional[EmailStr] = None
     usertype: Optional[str] = None  # 'admin', 'seller', 'user'
+
+class CartItem(BaseModel):
+    barcode: str
+    quantity: int

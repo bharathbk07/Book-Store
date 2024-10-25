@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (barcode) REFERENCES books(barcode)
 );
 ```
-## Create Cart tabel
+## Create Cart table
 
 ```sql
 CREATE TABLE IF NOT EXISTS cart (
