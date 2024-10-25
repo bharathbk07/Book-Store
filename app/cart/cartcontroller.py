@@ -111,7 +111,7 @@ def view_cart(
     """
     user_id = current_user["id"]
     is_admin = current_user["usertype"] == "admin"
-    print('here',user_id, is_admin, username_param)
+
     # If admin but no username_param is provided, return all carts
     if is_admin and username_param is None:       
         query = """
