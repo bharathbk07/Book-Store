@@ -46,7 +46,7 @@ def execute_query(query: str, params=None):
                 "data": result,
                 "columns": column_names
             }
-            return result  # Return both result and column names
+            # Return both result and column names
 
         return None  # Return None for non-SELECT queries
 

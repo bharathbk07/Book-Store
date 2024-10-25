@@ -70,7 +70,7 @@ def delete_cart_item(cart_item: CartItem, current_user: dict = Depends(get_curre
     Delete an item from the cart.
     """
     user_id = current_user["id"]
-
+    
     try:
         # Step 1: Check if the item exists in the cart
         check_query = """
@@ -99,27 +99,57 @@ def delete_cart_item(cart_item: CartItem, current_user: dict = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
     
+from fastapi import HTTPException, Query, Depends
+
 @router.get("/view")
 def view_cart(
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    username_param: str = Query(None, description="Username to view cart for. Required for admin.")
 ):
     """
-    View items in the user's cart. Admins can view any user's cart.
+    View items in the user's cart. Admins can view all users' carts if no username is provided.
     """
     user_id = current_user["id"]
     is_admin = current_user["usertype"] == "admin"
+    print('here',user_id, is_admin, username_param)
+    # If admin but no username_param is provided, return all carts
+    if is_admin and username_param is None:       
+        query = """
+        SELECT c.barcode, c.quantity, b.name AS title, b.price, u.username 
+        FROM cart c
+        JOIN books b ON c.barcode = b.barcode
+        JOIN users u ON c.user_id = u.id
+        """
+        params = ()  # No specific user filter for admin
+        
+    elif is_admin and username_param:
+        # If admin provided a username, fetch the user ID
+        user_id_query = "SELECT id FROM users WHERE username = %s;"
+        user_id_result = db_connect.execute_query(user_id_query, (username_param,))
+        user_id_data = user_id_result["data"]
 
-    # If admin, allow specifying a different user ID
-    user_id_param = user_id if not is_admin else Query(None, description="User ID to view cart for. Required for admin.")
+        if not user_id_data:
+            raise HTTPException(status_code=404, detail="User not found.")
 
-    # Query to get cart items along with corresponding book details
-    query = """
-    SELECT c.barcode, c.quantity, b.name AS title, b.price 
-    FROM cart c
-    JOIN books b ON c.barcode = b.barcode
-    WHERE c.user_id = %s
-    """
-    params = (user_id_param,)
+        user_id = user_id_data[0][0]  # Get the user ID from the result
+
+        # Query to get cart items for the specified user
+        query = """
+        SELECT c.barcode, c.quantity, b.name AS title, b.price 
+        FROM cart c
+        JOIN books b ON c.barcode = b.barcode
+        WHERE c.user_id = %s
+        """
+        params = (user_id,)
+    else:
+        # If not admin, retrieve only the current user's cart
+        query = """
+        SELECT c.barcode, c.quantity, b.name AS title, b.price 
+        FROM cart c
+        JOIN books b ON c.barcode = b.barcode
+        WHERE c.user_id = %s
+        """
+        params = (user_id,)
 
     try:
         result = db_connect.execute_query(query, params)
@@ -133,7 +163,7 @@ def view_cart(
             total_price = item_data['price'] * item_data['quantity']
             formatted_cart_items.append({
                 "barcode": item_data['barcode'],
-                "title": item_data['title'],  # Corrected field name
+                "title": item_data['title'],
                 "quantity": item_data['quantity'],
                 "price": item_data['price'],
                 "total_price": total_price
@@ -143,5 +173,5 @@ def view_cart(
             "message": "Cart retrieved successfully.",
             "cart_items": formatted_cart_items
         }
-    except Error as db_err:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

@@ -22,113 +22,7 @@ def register(user: UserCreate):
         return {"message": "User registered successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@router.get("/profile/{username}")
-def get_profile(username: str, user: dict = Depends(get_current_user)):
-    try:
-        # Check if user has an 'id' key; if not, raise an error
-        if "id" not in user:
-            raise HTTPException(status_code=403, detail="User ID not found.")
-
-        if user["usertype"] == "admin":
-            # Fetch orders and details for the specified user
-            orders_query = """
-                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
-                       o.status, o.quantity, b.name AS book_name, u.username 
-                FROM orders o
-                JOIN books b ON o.barcode = b.barcode
-                JOIN users u ON o.user_id = u.id
-                WHERE u.username = %s
-            """
-            orders_params = (username,)
-        else:
-            # Fetch orders for the current user
-            orders_query = """
-                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
-                       o.status, o.quantity, b.name AS book_name 
-                FROM orders o
-                JOIN books b ON o.barcode = b.barcode
-                WHERE o.user_id = %s
-            """
-            orders_params = (user["id"],)  # Ensure this user ID is valid
-
-        # Execute orders query
-        orders_result = db_connect.execute_query(orders_query, orders_params)
-        orders = orders_result["data"]
-
-        # Fetch added books for the user or specified user
-        if user["usertype"] == "admin":
-            user_details_query = "SELECT firstname, lastname, address, phone, mailid FROM users WHERE username = %s;"
-            user_details_result = db_connect.execute_query(user_details_query, (username,))
-            user_info = user_details_result["data"]
-            
-            if not user_info:
-                raise HTTPException(status_code=404, detail="User not found")
-
-            user_info = user_info[0]  # Access the first result
-
-            # Fetch added books by the specified user
-            added_books_query = """
-                SELECT barcode, name, author, price, quantity 
-                FROM books 
-                WHERE added_by = %s
-            """
-            added_books_result = db_connect.execute_query(added_books_query, (username,))
-            added_books = added_books_result["data"]
-        else:
-            # Fetch added books for the current user
-            added_books_query = """
-                SELECT barcode, name, author, price, quantity 
-                FROM books 
-                WHERE added_by = %s
-            """
-            added_books_result = db_connect.execute_query(added_books_query, (user["username"],))
-            added_books = added_books_result["data"]
-
-        # Prepare order data
-        orders_data = [
-            {
-                "order_id": row[0],
-                "order_date": row[1].strftime("%Y-%m-%d %H:%M:%S"),
-                "transaction_id": row[2],
-                "total_amount": float(row[3]),
-                "status": row[4],
-                "quantity": row[5],
-                "book_name": row[6],
-                **({"ordered_by": username} if user["usertype"] == "admin" else {}),
-            }
-            for row in orders
-        ]
-
-        # Prepare added books data
-        books_data = [
-            {
-                "barcode": row[0],
-                "name": row[1],
-                "author": row[2],
-                "price": float(row[3]),
-                "quantity": row[4],
-            }
-            for row in added_books
-        ]
-
-        # Get cart items using view_cart function
-        cart_response = view_cart(user)
-        user_info_response = user_details(user)
-        print(user_info_response['user_data'])
-
-        return {
-            "username": username,
-            "message": "Profile details retrieved successfully!",
-            "user_info": user_info_response['user_data'],
-            "orders": orders_data or "No orders found.",
-            "added_books": books_data or "No books added.",
-            "cart_items": cart_response.get("cart_items", "No products available in cart."),
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    
+   
 @router.get("/user_details")
 def user_details(user: dict = Depends(get_current_user)):
     try:
@@ -257,3 +151,136 @@ def update_user(
         raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/profile")
+def get_profile(user: dict = Depends(get_current_user)):
+    try:
+        # Ensure the user has a valid ID
+        if "id" not in user:
+            raise HTTPException(status_code=403, detail="User ID not found.")
+
+        orders_data = []
+        books_data = []
+        cart_response = {}
+
+        if user["usertype"] == "admin":
+            # Admin: Fetch all orders across users
+            orders_query = """
+                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
+                       o.status, o.quantity, b.name AS book_name, u.username 
+                FROM orders o
+                JOIN books b ON o.barcode = b.barcode
+                JOIN users u ON o.user_id = u.id
+            """
+            orders_result = db_connect.execute_query(orders_query)
+            orders = orders_result["data"]
+
+            # Prepare order data for admin
+            orders_data = [
+                {
+                    "order_id": row[0],
+                    "order_date": row[1].strftime("%Y-%m-%d %H:%M:%S"),
+                    "transaction_id": row[2],
+                    "total_amount": float(row[3]),
+                    "status": row[4],
+                    "quantity": row[5],
+                    "book_name": row[6],
+                    "ordered_by": row[7],  # Username of the person who placed the order
+                }
+                for row in orders
+            ]
+
+            # Admin: Fetch all books added by any user
+            added_books_query = """
+                SELECT barcode, name, author, price, quantity, added_by 
+                FROM books
+            """
+            added_books_result = db_connect.execute_query(added_books_query)
+            added_books = added_books_result["data"]
+
+            # Prepare books data for admin
+            books_data = [
+                {
+                    "barcode": row[0],
+                    "name": row[1],
+                    "author": row[2],
+                    "price": float(row[3]),
+                    "quantity": row[4],
+                    "added_by": row[5],  # Username of the user who added the book
+                }
+                for row in added_books
+            ]
+
+            # Admin: Get all cart items using view_cart without username filter
+            cart_response = view_cart(current_user=user,username_param=None)
+
+        else:
+            # Non-admin: Fetch only their own orders
+            orders_query = """
+                SELECT o.order_id, o.order_date, o.transaction_id, o.total_amount, 
+                       o.status, o.quantity, b.name AS book_name 
+                FROM orders o
+                JOIN books b ON o.barcode = b.barcode
+                WHERE o.user_id = %s
+            """
+            orders_params = (user["id"],)
+            orders_result = db_connect.execute_query(orders_query, orders_params)
+            orders = orders_result["data"]
+
+            # Prepare order data for non-admin
+            orders_data = [
+                {
+                    "order_id": row[0],
+                    "order_date": row[1].strftime("%Y-%m-%d %H:%M:%S"),
+                    "transaction_id": row[2],
+                    "total_amount": float(row[3]),
+                    "status": row[4],
+                    "quantity": row[5],
+                    "book_name": row[6],
+                    "ordered_by": user["username"],  # Current user's username
+                }
+                for row in orders
+            ]
+
+            # Non-admin: Fetch only their added books
+            added_books_query = """
+                SELECT barcode, name, author, price, quantity 
+                FROM books 
+                WHERE added_by = %s
+            """
+            added_books_params = (user["username"],)
+            added_books_result = db_connect.execute_query(added_books_query, added_books_params)
+            added_books = added_books_result["data"]
+
+            # Prepare books data for non-admin
+            books_data = [
+                {
+                    "barcode": row[0],
+                    "name": row[1],
+                    "author": row[2],
+                    "price": float(row[3]),
+                    "quantity": row[4],
+                }
+                for row in added_books
+            ]
+
+            # Non-admin: Get cart items for the current user
+            cart_response = view_cart(current_user=user)
+
+        # User information using the user_details function
+        user_info_response = user_details(user)
+
+        return {
+            "message": "Profile details retrieved successfully!",
+            "user_data": user_info_response.get("user_data", "No User Data found"),
+            "orders": orders_data or "No orders found.",
+            "added_books": books_data or "No books added.",
+            "cart_items": cart_response.get("cart_items", "No products available in cart."),
+        }
+
+    except HTTPException as http_exc:
+        # Handle HTTP exceptions explicitly
+        raise http_exc
+    except Exception as e:
+        # Handle other exceptions with a 500 error
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
