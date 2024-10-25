@@ -8,7 +8,7 @@ from fastapi.security import OAuth2
 from app.auth.auth_routes import router as auth_router
 from app.users.user_routes import router as user_router
 from app.books.bookscontroller import router as books_router
-#from app.cart.cartcontroller import router as cart_router
+from app.search.searchcontroller import router as search_router
 
 # Set up OAuth2 authentication
 class OAuth2BearerHeader(OAuth2):
@@ -32,7 +32,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/users", tags=["User Management"])
 app.include_router(books_router, prefix="/books", tags=["Books Management"])
-#app.include_router(cart_router, prefix="/cart", tags=["Cart Management"])
+app.include_router(search_router, prefix="/api", tags=["Cart Management"])
 
 # Global Exception Handling
 @app.exception_handler(Exception)
