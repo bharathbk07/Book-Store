@@ -27,6 +27,46 @@ This is a FastAPI application for a bookstore management system, featuring user 
 - **Order Management**: Users can place orders, view their orders, and cancel orders. Admins can manage order statuses.
 - **Cart Management**: Users can add books to their cart and view their cart items.
 
+## Folder Structure
+
+```
+Book store/
+├─ app/
+│  ├─ database/
+│  │  ├─ __init__.py
+│  │  ├─ db_connect.py
+│  ├─ orders/
+│  │  ├─ __init__.py
+│  │  ├─ ordermanagement.py
+│  ├─ schemas/
+│  │  ├─ __init__.py
+│  │  ├─ schemas.py
+│  ├─ search/
+│  │  ├─ __init__.py
+│  │  ├─ searchcontroller.py
+│  ├─ users/
+│  │  ├─ __init__.py
+│  │  ├─ user_routes.py
+│  ├─ utlis/
+│  │  ├─ __init__.py
+│  │  ├─ password_utils.py
+│  ├─ auth/
+│  │  ├─ __init__.py
+│  │  ├─ auth_routes.py
+│  │  ├─ jwt_handler.py
+│  ├─ books/
+│  │  ├─ __init__.py
+│  │  ├─ bookscontroller.py
+│  ├─ cart/
+│  │  ├─ __init__.py
+│  │  ├─ cartcontroller.py
+├─ main.py
+├─ requirements.txt
+├─ .gitignore
+├─ __init__.py
+
+```
+
 ## Technologies Used
 
 - **FastAPI**: A modern web framework for building APIs with Python.

@@ -7,7 +7,7 @@ from mysql.connector import Error
 router = APIRouter()
 
 # Allowed tables based on user roles
-NON_ADMIN_TABLES = ["books", "orders"]
+NON_ADMIN_TABLES = ["books", "orders","cart"]
 ADMIN_TABLES = NON_ADMIN_TABLES + ["users"]
 
 # Define valid order_by fields for each table
