@@ -23,6 +23,7 @@ def create_connection_pool():
                 user=os.getenv("DB_USER"),
                 password=os.getenv("DB_PASSWORD"),
                 database=os.getenv("DB_NAME"),
+                port=int(os.getenv("DB_PORT")),  # Accepting port number from the environment
             )
             logging.info("Database connection pool created successfully.")
             return pool  # Return the connection pool
